@@ -1,0 +1,21 @@
+# Node.js modules
+/node_modules
+
+# TypeScript build output
+/dist
+
+# Logs
+*.log
+
+# Environment files
+.env
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# npm package lock files for different environments
+package-lock.json
+
+# TypeScript cache
+*.tsbuildinfo
