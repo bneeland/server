@@ -11,6 +11,14 @@ export const auth = betterAuth({
     schema,
   }),
   trustedOrigins: origins,
+  // Docs: https://www.better-auth.com/docs/integrations/hono
+  advanced: {
+    defaultCookieAttributes: {
+      sameSite: "none",
+      secure: true,
+      partitioned: true, // New browser standards will mandate this for foreign cookies
+    },
+  },
   plugins: [
     emailOTP({
       async sendVerificationOTP({ email, otp, type }) {
