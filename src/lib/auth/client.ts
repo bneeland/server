@@ -13,10 +13,8 @@ export const auth = betterAuth({
   trustedOrigins: origins,
   // Docs: https://www.better-auth.com/docs/integrations/hono
   advanced: {
-    defaultCookieAttributes: {
-      sameSite: "none",
-      secure: true,
-      partitioned: true, // New browser standards will mandate this for foreign cookies
+    crossSubDomainCookies: {
+      enabled: true,
     },
   },
   plugins: [
