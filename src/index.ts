@@ -1,8 +1,9 @@
 import express from "express";
 import dotenv from "dotenv";
 import { fromNodeHeaders, toNodeHandler } from "better-auth/node";
-import { auth } from "./lib/auth/auth.js";
+import { auth } from "./lib/auth/client.js";
 import cors from "cors";
+import { origins } from "./lib/common.js";
 
 dotenv.config();
 
@@ -11,7 +12,7 @@ const port = process.env.PORT || 3000;
 
 app.use(
   cors({
-    origin: "http://your-frontend-domain.com", // Replace with your frontend's origin
+    origin: origins, // Replace with your frontend's origin
     methods: ["GET", "POST", "PUT", "DELETE"], // Specify allowed HTTP methods
     credentials: true, // Allow credentials (cookies, authorization headers, etc.)
   }),
@@ -33,15 +34,30 @@ app.get("/api/me", async (req, res) => {
   return res.json(session);
 });
 
-app.get("/api/sign-in/send-otp", async (req, res) => {
-  const data = await auth.api.sendVerificationOTP({
-    body: {
-      email: "hello@example.com", // required
-      type: "sign-in", // required
-    },
-  });
+app.post("/api/auth/email-otp/send-verification-otp", async (req, res) => {
+  // app.post("/api/sign-in/get-otp", async (req, res) => {
+  const { email } = req.body;
 
-  return res.json(data);
+  if (!email) {
+    return res.status(400).json({ message: "Must provide an email" });
+  }
+
+  try {
+    const data = await auth.api.sendVerificationOTP({
+      body: {
+        email, // required
+        type: "sign-in", // required
+      },
+    });
+    console.log("data");
+    console.log(data);
+
+    return res.status(200).json(data);
+  } catch (error: any) {
+    console.error("error");
+    console.error(error);
+    return res.status(error.statusCode).json(error.body);
+  }
 });
 
 app.post("/api/test", async (req, res) => {
@@ -51,17 +67,26 @@ app.post("/api/test", async (req, res) => {
   res.send("Hello, TypeScript with Express!");
 });
 
-app.post("/api/sign-in/verify-otp", async (req, res) => {
-  const { otp } = req.body;
+app.post("/api/auth/email-otp/send-verification-otp", async (req, res) => {
+  // app.post("/api/sign-in/verify-otp", async (req, res) => {
+  const { email, otp } = req.body;
 
-  const data = await auth.api.signInEmailOTP({
-    body: {
-      email: "hello@example.com",
-      otp,
-    },
-  });
+  try {
+    const data = await auth.api.signInEmailOTP({
+      body: {
+        email,
+        otp,
+      },
+    });
+    console.log("data");
+    console.log(data);
 
-  res.send(data);
+    res.status(200).json(data);
+  } catch (error: any) {
+    console.error("error");
+    console.error(error);
+    return res.status(error.statusCode).json(error.body);
+  }
 });
 
 app.use(express.json()); // Must be after /api/auth/… route handler
