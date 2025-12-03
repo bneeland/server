@@ -3,14 +3,16 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { emailOTP } from "better-auth/plugins";
 import { db } from "../database/client.js";
 import * as schema from "../database/schema.js";
-import { origins } from "../common.js";
+import { expo } from "@better-auth/expo";
+import { mailClient } from "../mail/client.js";
+import { allowedOrigins } from "../common.js";
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
     schema,
   }),
-  trustedOrigins: origins,
+  trustedOrigins: allowedOrigins,
   // Docs: https://www.better-auth.com/docs/integrations/hono
   advanced: {
     crossSubDomainCookies: {
@@ -28,12 +30,25 @@ export const auth = betterAuth({
         console.log(type);
         if (type === "sign-in") {
           // Send the OTP for sign in
+          await mailClient.sendMail({
+            from: "Emberline <hello@emberline.app>",
+            to: email,
+            subject: "Sign-in verification code",
+            html: `<div>Your Emberline sign-in verification code: ${otp}</div>`,
+          });
         } else if (type === "email-verification") {
           // Send the OTP for email verification
+          await mailClient.sendMail({
+            from: "Emberline <hello@emberline.app>",
+            to: email,
+            subject: "Email verification code",
+            html: `<div>Your Emberline email verification code: ${otp}</div>`,
+          });
         } else {
           // Send the OTP for password reset
         }
       },
     }),
+    expo(),
   ],
 });

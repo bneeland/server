@@ -1,1 +1,1 @@
-export const origins = ["http://localhost:5173", "https://www.emberline.app"];
+export const allowedOrigins = JSON.parse(process.env.ALLOWED_ORIGINS!);
