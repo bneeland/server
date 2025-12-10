@@ -40,7 +40,9 @@ app.get("/api/cron", async (req, res) => {
     return res.status(401).end("Unauthorized");
   }
 
-  res.send("hello, cron job");
+  console.log("cron job ran");
+
+  res.end();
 });
 
 app.use(express.json()); // Must be after /api/auth/… route handler
