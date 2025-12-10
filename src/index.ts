@@ -35,6 +35,14 @@ app.get("/api/me", async (req, res) => {
   return res.json(session);
 });
 
+app.get("/api/cron", async (req, res) => {
+  if (req.get("Authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
+    return res.status(401).end("Unauthorized");
+  }
+
+  res.send("hello, cron job");
+});
+
 app.use(express.json()); // Must be after /api/auth/… route handler
 
 app.listen(port, () => {
