@@ -7,7 +7,8 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "format": "npx prettier . --write"
+    "format": "npx prettier . --write",
+    "migrate": "npx drizzle-kit push"
   },
   "keywords": [],
   "author": "",
