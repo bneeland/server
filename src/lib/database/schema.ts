@@ -1,5 +1,13 @@
 import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  timestamp,
+  boolean,
+  index,
+  time,
+  uuid,
+} from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -74,12 +82,27 @@ export const verification = pgTable(
 );
 
 export const setting = pgTable("setting", {
-  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  checkinsEnabled: boolean("checkins_enabled").default(true).notNull(),
+  checkinTime: time("checkin_time", { precision: 0 })
+    .default("11:00")
+    .notNull(),
+  resetTime: time("reset_time", { precision: 0 }).default("00:00").notNull(),
+  checkinTimeZone: text("checkin_time_zone").default("").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
+export const checkin = pgTable("checkin", {
+  id: uuid("id").defaultRandom().primaryKey(),
   userId: text("user_id")
     .notNull()
-    .unique()
     .references(() => user.id, { onDelete: "cascade" }),
-  checkinsActive: boolean("checkins_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()
