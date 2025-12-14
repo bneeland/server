@@ -6,7 +6,7 @@ import cors from "cors";
 import { allowedOrigins } from "./lib/common.js";
 import { db } from "./lib/database/client.js";
 import { checkin, setting } from "./lib/database/schema.js";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 
 dotenv.config();
 
@@ -121,7 +121,8 @@ app.get("/api/checkins/get-user-checkins", async (req, res) => {
   const checkins = await db
     .select()
     .from(checkin)
-    .where(eq(checkin.userId, session.user.id));
+    .where(eq(checkin.userId, session.user.id))
+    .orderBy(desc(checkin.createdAt));
   console.log("checkins");
   console.log(checkins);
 

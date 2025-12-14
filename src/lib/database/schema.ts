@@ -86,11 +86,13 @@ export const setting = pgTable("setting", {
     .primaryKey()
     .references(() => user.id, { onDelete: "cascade" }),
   checkinsEnabled: boolean("checkins_enabled").default(true).notNull(),
-  checkinTime: time("checkin_time", { precision: 0 })
+  checkinDeadlineTime: time("checkin_time", { precision: 0 })
     .default("11:00")
     .notNull(),
-  resetTime: time("reset_time", { precision: 0 }).default("00:00").notNull(),
-  checkinTimeZone: text("checkin_time_zone").default("").notNull(),
+  checkinResetTime: time("reset_time", { precision: 0 })
+    .default("00:00")
+    .notNull(),
+  timeZone: text("checkin_time_zone").default("").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()
