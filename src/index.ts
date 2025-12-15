@@ -3,10 +3,13 @@ import dotenv from "dotenv";
 import { fromNodeHeaders, toNodeHandler } from "better-auth/node";
 import { auth } from "./lib/auth/client.js";
 import cors from "cors";
-import { allowedOrigins } from "./lib/common.js";
+import { allowedOrigins, lastLocalTime } from "./lib/common.js";
 import { db } from "./lib/database/client.js";
 import { checkin, setting } from "./lib/database/schema.js";
 import { desc, eq } from "drizzle-orm";
+import { roundToNearestMinutes } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
+import { mailClient } from "./lib/mail/client.js";
 
 dotenv.config();
 
@@ -161,6 +164,83 @@ app.get("/api/cron", async (req, res) => {
   }
 
   console.log("cron job ran");
+
+  const nowFloored = roundToNearestMinutes(new Date(), {
+    nearestTo: 5,
+    roundingMethod: "floor",
+  });
+  console.log("nowFloored");
+  console.log(nowFloored);
+
+  const settings = await db
+    .select()
+    .from(setting)
+    .where(eq(setting.checkinsEnabled, true));
+  console.log("settings");
+  console.log(settings);
+
+  let applicableSettings = [];
+
+  for (const setting of settings) {
+    const nowFlooredTimeZone = formatInTimeZone(
+      nowFloored,
+      setting.timeZone,
+      "HH:mm:ss",
+    );
+    console.log("nowFlooredTimeZone");
+    console.log(nowFlooredTimeZone);
+
+    if (setting.checkinDeadlineTime === nowFlooredTimeZone) {
+      applicableSettings.push(setting);
+    }
+  }
+  console.log("applicableSettings");
+  console.log(applicableSettings);
+
+  for (const setting of applicableSettings) {
+    const [lastCheckin] = await db
+      .select()
+      .from(checkin)
+      .where(eq(checkin.userId, setting.userId))
+      .orderBy(desc(checkin.createdAt))
+      .limit(1);
+    console.log("lastCheckin");
+    console.log(lastCheckin);
+
+    const lastCheckinResetTime = lastLocalTime(
+      setting.checkinResetTime,
+      setting.timeZone,
+    );
+    console.log("lastCheckinResetTime");
+    console.log(lastCheckinResetTime);
+
+    const lastCheckinDeadlineTime = lastLocalTime(
+      setting.checkinDeadlineTime,
+      setting.timeZone,
+    );
+    console.log("lastCheckinDeadlineTime");
+    console.log(lastCheckinDeadlineTime);
+
+    const lastCheckinDate = new Date(lastCheckin.createdAt);
+
+    if (
+      !(
+        lastCheckinDate >= lastCheckinResetTime &&
+        lastCheckinDate <= lastCheckinDeadlineTime
+      )
+    ) {
+      console.log("did not check in on time");
+
+      await mailClient.sendMail({
+        from: "Emberline <hello@emberline.app>",
+        to: "brian@neeland.org",
+        subject: "emergency contact email",
+        html: `<div>this is an emergency contact email sent to you as emergency contact for ${setting.userId}</div>`,
+      });
+    } else {
+      console.log("did check in on time");
+    }
+  }
 
   res.end();
 });
