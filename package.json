@@ -15,6 +15,7 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@aws-sdk/client-sns": "^3.952.0",
     "@better-auth/expo": "^1.4.4",
     "@neondatabase/serverless": "^1.0.2",
     "@types/nodemailer": "^7.0.4",
