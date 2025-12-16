@@ -1,8 +1,8 @@
 import { PublishCommand, SNSClient } from "@aws-sdk/client-sns";
 
 const snsClient = new SNSClient({
-  region: "us-east-1",
-  // Credentials loaded from .env file automatically
+  region: "us-west-2",
+  // Credentials loaded from environment variables automatically
 });
 
 export async function sendSms({

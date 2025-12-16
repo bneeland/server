@@ -9,8 +9,8 @@ import { checkin, setting, user } from "./lib/database/schema.js";
 import { desc, eq } from "drizzle-orm";
 import { roundToNearestMinutes } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
-import { mailClient } from "./lib/mail/client.js";
 import { sendSms } from "./lib/sms/client.js";
+import { sendEmail } from "./lib/email/client.js";
 
 dotenv.config();
 
@@ -239,18 +239,20 @@ app.get("/api/cron", async (req, res) => {
       console.log("userFound");
       console.log(userFound);
 
-      const message = `this is an emergency contact email sent to you as the emergency contact for ${userFound.name || userFound.email}`;
+      const message = `this is an emergency message sent to you as the emergency contact for ${userFound.name || userFound.email}`;
 
       await sendSms({
         phoneNumber: "+17802437675",
         message,
       });
 
-      await mailClient.sendMail({
-        from: "Emberline <hello@emberline.app>",
-        to: "brian@neeland.org",
+      await sendEmail({
+        toAddresses: ["brian@neeland.org"],
         subject: "emergency contact email",
-        html: `<div>${message}</div>`,
+        body: {
+          text: message,
+          html: `<div>${message}</div>`,
+        },
       });
     } else {
       console.log("did check in on time");

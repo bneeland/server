@@ -4,7 +4,7 @@ import { emailOTP } from "better-auth/plugins";
 import { db } from "../database/client.js";
 import * as schema from "../database/schema.js";
 import { expo } from "@better-auth/expo";
-import { mailClient } from "../mail/client.js";
+import { sendEmail } from "../email/client.js";
 import { allowedOrigins } from "../common.js";
 
 export const auth = betterAuth({
@@ -30,19 +30,23 @@ export const auth = betterAuth({
         console.log(type);
         if (type === "sign-in") {
           // Send the OTP for sign in
-          await mailClient.sendMail({
-            from: "Emberline <hello@emberline.app>",
-            to: email,
+          await sendEmail({
+            toAddresses: [email],
             subject: "Sign-in verification code",
-            html: `<div>Your Emberline sign-in verification code: ${otp}</div>`,
+            body: {
+              text: `Your Emberline sign-in verification code: ${otp}`,
+              html: `<div>Your Emberline sign-in verification code: ${otp}</div>`,
+            },
           });
         } else if (type === "email-verification") {
           // Send the OTP for email verification
-          await mailClient.sendMail({
-            from: "Emberline <hello@emberline.app>",
-            to: email,
+          await sendEmail({
+            toAddresses: [email],
             subject: "Email verification code",
-            html: `<div>Your Emberline email verification code: ${otp}</div>`,
+            body: {
+              text: `Your Emberline email verification code: ${otp}`,
+              html: `<div>Your Emberline email verification code: ${otp}</div>`,
+            },
           });
         } else {
           // Send the OTP for password reset
