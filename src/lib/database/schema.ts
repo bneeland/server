@@ -100,6 +100,21 @@ export const setting = pgTable("setting", {
     .notNull(),
 });
 
+export const contact = pgTable("contact", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  name: text("name").default("").notNull(),
+  email: text("email").default("").notNull(),
+  phoneNumber: text("phone_number").default("").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
 export const checkin = pgTable("checkin", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: text("user_id")
@@ -119,6 +134,7 @@ export const userRelations = relations(user, ({ many, one }) => ({
     fields: [user.id],
     references: [setting.userId],
   }),
+  contacts: many(contact),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -138,6 +154,13 @@ export const accountRelations = relations(account, ({ one }) => ({
 export const settingRelations = relations(setting, ({ one }) => ({
   user: one(user, {
     fields: [setting.userId],
+    references: [user.id],
+  }),
+}));
+
+export const contactRelations = relations(contact, ({ one }) => ({
+  user: one(user, {
+    fields: [contact.userId],
     references: [user.id],
   }),
 }));

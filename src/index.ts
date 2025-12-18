@@ -5,8 +5,8 @@ import { auth } from "./lib/auth/client.js";
 import cors from "cors";
 import { allowedOrigins, lastLocalTime } from "./lib/common.js";
 import { db } from "./lib/database/client.js";
-import { checkin, setting, user } from "./lib/database/schema.js";
-import { desc, eq } from "drizzle-orm";
+import { checkin, contact, setting, user } from "./lib/database/schema.js";
+import { and, desc, eq } from "drizzle-orm";
 import { roundToNearestMinutes } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import { sendSms } from "./lib/sms/client.js";
@@ -152,6 +152,110 @@ app.post("/api/checkins/create-user-checkin", async (req, res) => {
     console.log(created);
 
     return res.status(200).json({ checkin: created });
+  } catch (err: any) {
+    console.error(err);
+
+    return res.status(400).json({ message: err.message || "Update failed" });
+  }
+});
+
+app.get("/api/contacts/get-user-contacts", async (req, res) => {
+  const session = await auth.api.getSession({
+    headers: fromNodeHeaders(req.headers),
+  });
+  console.log("session");
+  console.log(session);
+
+  if (!session) {
+    return res.status(401).end();
+  }
+
+  const contacts = await db
+    .select()
+    .from(contact)
+    .where(eq(contact.userId, session.user.id))
+    .orderBy(desc(contact.createdAt));
+  console.log("contacts");
+  console.log(contacts);
+
+  return res.status(200).json({ contacts });
+});
+
+app.post("/api/contacts/upsert-user-contact", async (req, res) => {
+  console.log("req.body");
+  console.log(req.body);
+
+  const session = await auth.api.getSession({
+    headers: fromNodeHeaders(req.headers),
+  });
+  console.log("session");
+  console.log(session);
+
+  if (!session) {
+    return res.status(401).end();
+  }
+
+  if (!req.body.name) {
+    return res.status(400).json({ message: "Must provide name" });
+  }
+
+  if (!req.body.email && !req.body.phoneNumber) {
+    return res
+      .status(400)
+      .json({ message: "Must provide an email or a phone number, or both" });
+  }
+
+  try {
+    const upserted = await db
+      .insert(contact)
+      .values({
+        userId: session.user.id,
+        ...req.body,
+      })
+      .onConflictDoUpdate({
+        target: contact.id,
+        set: {
+          name: req.body.name,
+          email: req.body.email,
+          phoneNumber: req.body.phoneNumber,
+        },
+      });
+    console.log("upserted");
+    console.log(upserted);
+
+    return res.status(200).json({ contact: upserted });
+  } catch (err: any) {
+    console.error(err);
+
+    return res.status(400).json({ message: err.message || "Update failed" });
+  }
+});
+
+app.delete("/api/contacts/delete-user-contact", async (req, res) => {
+  const session = await auth.api.getSession({
+    headers: fromNodeHeaders(req.headers),
+  });
+  console.log("session");
+  console.log(session);
+
+  if (!session) {
+    return res.status(401).end();
+  }
+
+  const { id } = req.body;
+
+  if (!id) {
+    return res.status(400).json({ message: "Must provide a contact ID" });
+  }
+
+  try {
+    const deleted = await db
+      .delete(contact)
+      .where(and(eq(contact.userId, session.user.id), eq(contact.id, id)));
+    console.log("deleted");
+    console.log(deleted);
+
+    return res.status(200).json({ contact: deleted });
   } catch (err: any) {
     console.error(err);
 
