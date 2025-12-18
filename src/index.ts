@@ -264,106 +264,129 @@ app.delete("/api/contacts/delete-user-contact", async (req, res) => {
 });
 
 app.get("/api/cron", async (req, res) => {
-  if (req.get("Authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
-    return res.status(401).end("Unauthorized");
-  }
-
-  console.log("cron job ran");
-
-  const nowFloored = roundToNearestMinutes(new Date(), {
-    nearestTo: 5,
-    roundingMethod: "floor",
-  });
-  console.log("nowFloored");
-  console.log(nowFloored);
-
-  const settings = await db
-    .select()
-    .from(setting)
-    .where(eq(setting.checkinsEnabled, true));
-  console.log("settings");
-  console.log(settings);
-
-  let applicableSettings = [];
-
-  for (const setting of settings) {
-    const nowFlooredTimeZone = formatInTimeZone(
-      nowFloored,
-      setting.timeZone,
-      "HH:mm:ss",
-    );
-    console.log("nowFlooredTimeZone");
-    console.log(nowFlooredTimeZone);
-
-    if (setting.checkinDeadlineTime === nowFlooredTimeZone) {
-      applicableSettings.push(setting);
+  try {
+    if (req.get("Authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
+      return res.status(401).end("Unauthorized");
     }
-  }
-  console.log("applicableSettings");
-  console.log(applicableSettings);
 
-  for (const setting of applicableSettings) {
-    const [lastCheckin] = await db
+    console.log("cron job ran");
+
+    const nowFloored = roundToNearestMinutes(new Date(), {
+      nearestTo: 5,
+      roundingMethod: "floor",
+    });
+    console.log("nowFloored");
+    console.log(nowFloored);
+
+    const settings = await db
       .select()
-      .from(checkin)
-      .where(eq(checkin.userId, setting.userId))
-      .orderBy(desc(checkin.createdAt))
-      .limit(1);
-    console.log("lastCheckin");
-    console.log(lastCheckin);
+      .from(setting)
+      .where(eq(setting.checkinsEnabled, true));
+    console.log("settings");
+    console.log(settings);
 
-    const lastCheckinResetTime = lastLocalTime(
-      setting.checkinResetTime,
-      setting.timeZone,
-    );
-    console.log("lastCheckinResetTime");
-    console.log(lastCheckinResetTime);
+    let applicableSettings = [];
 
-    const lastCheckinDeadlineTime = lastLocalTime(
-      setting.checkinDeadlineTime,
-      setting.timeZone,
-    );
-    console.log("lastCheckinDeadlineTime");
-    console.log(lastCheckinDeadlineTime);
+    for (const setting of settings) {
+      const nowFlooredTimeZone = formatInTimeZone(
+        nowFloored,
+        setting.timeZone,
+        "HH:mm:ss",
+      );
+      console.log("nowFlooredTimeZone");
+      console.log(nowFlooredTimeZone);
 
-    const lastCheckinDate = new Date(lastCheckin.createdAt);
-
-    if (
-      !(
-        lastCheckinDate >= lastCheckinResetTime &&
-        lastCheckinDate <= lastCheckinDeadlineTime
-      )
-    ) {
-      console.log("did not check in on time");
-
-      const [userFound] = await db
-        .select()
-        .from(user)
-        .where(eq(user.id, setting.userId));
-      console.log("userFound");
-      console.log(userFound);
-
-      const message = `this is an emergency message sent to you as the emergency contact for ${userFound.name || userFound.email}`;
-
-      await sendSms({
-        phoneNumber: "+17802437675",
-        message,
-      });
-
-      await sendEmail({
-        toAddresses: ["brian@neeland.org"],
-        subject: "emergency contact email",
-        body: {
-          text: message,
-          html: `<div>${message}</div>`,
-        },
-      });
-    } else {
-      console.log("did check in on time");
+      if (setting.checkinDeadlineTime === nowFlooredTimeZone) {
+        applicableSettings.push(setting);
+      }
     }
-  }
+    console.log("applicableSettings");
+    console.log(applicableSettings);
 
-  res.end();
+    for (const setting of applicableSettings) {
+      const [lastCheckin] = await db
+        .select()
+        .from(checkin)
+        .where(eq(checkin.userId, setting.userId))
+        .orderBy(desc(checkin.createdAt))
+        .limit(1);
+      console.log("lastCheckin");
+      console.log(lastCheckin);
+
+      const lastCheckinResetTime = lastLocalTime(
+        setting.checkinResetTime,
+        setting.timeZone,
+      );
+      console.log("lastCheckinResetTime");
+      console.log(lastCheckinResetTime);
+
+      const lastCheckinDeadlineTime = lastLocalTime(
+        setting.checkinDeadlineTime,
+        setting.timeZone,
+      );
+      console.log("lastCheckinDeadlineTime");
+      console.log(lastCheckinDeadlineTime);
+
+      const lastCheckinDate = new Date(lastCheckin.createdAt);
+
+      if (
+        !(
+          lastCheckinDate >= lastCheckinResetTime &&
+          lastCheckinDate <= lastCheckinDeadlineTime
+        )
+      ) {
+        console.log("did not check in on time");
+
+        const contacts = await db
+          .select()
+          .from(contact)
+          .where(eq(contact.userId, setting.userId));
+        console.log("contacts");
+        console.log(contacts);
+
+        if (contacts.length > 0) {
+          const [userFound] = await db
+            .select()
+            .from(user)
+            .where(eq(user.id, setting.userId));
+          console.log("userFound");
+          console.log(userFound);
+
+          const message = `this is an emergency message sent to you as the emergency contact for ${userFound.name || userFound.email}`;
+
+          for (const contact of contacts) {
+            if (contact.phoneNumber) {
+              await sendSms({
+                phoneNumber: contact.phoneNumber,
+                // phoneNumber: "+17802437675",
+                message,
+              });
+            }
+
+            if (contact.email) {
+              await sendEmail({
+                toAddresses: [contact.email],
+                // toAddresses: ["brian@neeland.org"],
+                subject: "emergency contact email",
+                body: {
+                  text: message,
+                  html: `<div>${message}</div>`,
+                },
+              });
+            }
+          }
+        }
+      } else {
+        console.log("did check in on time");
+      }
+    }
+
+    res.status(200).send("Cron job executed successfully");
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).send("Cron job had an error");
+  }
 });
 
 app.listen(port, () => {
