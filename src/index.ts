@@ -48,7 +48,7 @@ app.get("/api/settings/get-user-setting", async (req, res) => {
   const session = await auth.api.getSession({
     headers: fromNodeHeaders(req.headers),
   });
-  console.log("session");
+  console.log("session in get-user-setting");
   console.log(session);
 
   if (!session) {
@@ -86,6 +86,17 @@ app.patch("/api/settings/update-user-setting", async (req, res) => {
 
   if (!session) {
     return res.status(401).end();
+  }
+
+  console.log("req.body");
+  console.log(req.body);
+
+  if (req.body.checkinDeadlineTime) {
+    if (Number(req.body.checkinDeadlineTime.split(":")[1]) % 15 !== 0) {
+      return res.status(400).json({
+        message: "Check-in deadline time must be in 15-minute increments",
+      });
+    }
   }
 
   try {
