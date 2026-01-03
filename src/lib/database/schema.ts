@@ -127,6 +127,19 @@ export const checkin = pgTable("checkin", {
     .notNull(),
 });
 
+export const pushToken = pgTable("push_token", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  token: text("token").default("").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
 export const userRelations = relations(user, ({ many, one }) => ({
   sessions: many(session),
   accounts: many(account),
@@ -135,6 +148,7 @@ export const userRelations = relations(user, ({ many, one }) => ({
     references: [setting.userId],
   }),
   contacts: many(contact),
+  pushTokens: many(pushToken),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -161,6 +175,13 @@ export const settingRelations = relations(setting, ({ one }) => ({
 export const contactRelations = relations(contact, ({ one }) => ({
   user: one(user, {
     fields: [contact.userId],
+    references: [user.id],
+  }),
+}));
+
+export const pushTokenRelations = relations(pushToken, ({ one }) => ({
+  user: one(user, {
+    fields: [pushToken.userId],
     references: [user.id],
   }),
 }));
